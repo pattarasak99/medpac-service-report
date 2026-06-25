@@ -805,60 +805,57 @@ function clearLocalDraft(){}
 
 function confirmReset(){if(!confirm('Reset all fields and photos?'))return;document.querySelectorAll('input:not([type=radio]):not([type=checkbox]),select,textarea').forEach(el=>{el.type==='date'?el.value=new Date().toISOString().split('T')[0]:el.value='';});document.querySelectorAll('.charge-card').forEach(c=>c.classList.remove('sel-paid','sel-foc','sel-warranty'));document.querySelectorAll('input[name="charge"]').forEach(r=>r.checked=false);document.querySelectorAll('#svc-chips input[type=checkbox]').forEach(c=>c.checked=false);document.querySelectorAll('#svc-chips .chip').forEach(c=>c.classList.remove('active'));document.getElementById('other-specify-wrap').style.display='none';document.getElementById('warranty-expiry-wrap').style.display='none';clearSig('tech-sig','tech');clearSig('cust-sig','cust');currentRating=0;document.querySelectorAll('.star-btn').forEach(b=>b.classList.remove('on'));document.getElementById('rating-txt').textContent='';document.querySelector('.status-card').click();document.getElementById('eng-list').innerHTML='';addEngineer();attachedPhotos=[];document.getElementById('photo-grid').innerHTML='';document.getElementById('parts-body').innerHTML='<tr><td><input type="text" placeholder="Part name"></td><td><input type="text" placeholder="P/N"></td><td><input type="number" min="0" placeholder="1" class="qty-i"></td><td><input type="number" min="0" step="0.01" placeholder="0.00" class="price-i"></td><td><button class="del-row-btn" onclick="delPartRow(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td></tr>';attachParts();calcTotal();docNum=genDocNum();document.getElementById('top-doc-num').textContent=docNum;setUploadStatus('');showToast('Form reset');}
 
-document.addEventListener('DOMContentLoaded', async ()=>{
+document.addEventListener('DOMContentLoaded', async function(){
   checkCfg();
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('app-screen').style.display='none';
 
-  // ── LIFF init ──
-  // liff SDK is loaded, try to init
   if(typeof liff === 'undefined'){ return; }
 
   try {
     await liff.init({ liffId: CONFIG.LIFF_ID });
-  } catch(err){
-    console.warn('LIFF init failed:', err);
-    return; // fall back to normal Google sign-in
-  }
-
-  // We are inside LINE (LIFF context) — skip Google sign-in entirely
-  // Google OAuth is blocked inside LINE's webview anyway
-  if(!liff.isInClient() && !liff.isLoggedIn()){
-    // Running in external browser via liff URL — do LINE login
-    liff.login();
+  } catch(e){
+    console.warn('LIFF init failed:', e);
     return;
   }
 
+  // Inside LINE app — open external browser immediately
+  if(liff.isInClient()){
+    document.getElementById('auth-screen').innerHTML =
+      '<div style="text-align:center;padding:32px">' +
+      '<p style="font-size:18px;font-weight:600;color:#185FA5">MEDPAC Service Report</p>' +
+      '<p style="color:#1D9E75;font-size:15px;margin-top:16px">&#9203; Opening in browser...</p>' +
+      '<p style="color:#888;font-size:13px;margin-top:8px">Please wait a moment</p>' +
+      '</div>';
+    liff.openWindow({
+      url: 'https://pattarasak99.github.io/medpac-service-report/',
+      external: true
+    });
+    return;
+  }
+
+  // External browser — get LINE profile and show form
   try {
-    const profile = await liff.getProfile();
-    const lineUser = {
+    if(!liff.isLoggedIn()){ liff.login(); return; }
+    var profile = await liff.getProfile();
+    var lineUser = {
       name: profile.displayName,
       picture: profile.pictureUrl,
       given_name: profile.displayName,
       family_name: '',
-      sub: profile.userId,
       _fromLine: true
     };
     currentUser = lineUser;
-
-    // Show user badge and go straight to form — no Google needed
     renderUserBadge(lineUser);
     showApp();
-
-    // Auto-fill engineer name from LINE profile (still editable)
-    setTimeout(()=>{
-      const firstNameInput = document.querySelector('#eng-list .eng-name');
-      if(firstNameInput && !firstNameInput.value){
-        firstNameInput.value = profile.displayName;
-      }
+    setTimeout(function(){
+      var inp = document.querySelector('#eng-list .eng-name');
+      if(inp && !inp.value) inp.value = profile.displayName;
     }, 400);
-
-  } catch(err){
-    console.warn('Could not get LINE profile:', err);
-    // Still show the form — let engineer type their name manually
-    const lineUser = { name: 'LINE User', given_name: 'LINE', _fromLine: true };
-    currentUser = lineUser;
-    renderUserBadge(lineUser);
+  } catch(e2){
+    console.warn('Profile error:', e2);
+    currentUser = { name: 'Engineer', given_name: 'Engineer', _fromLine: true };
+    renderUserBadge(currentUser);
     showApp();
   }
 });
