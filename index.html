@@ -641,9 +641,8 @@ function buildPDF(){
   return doc;
 }
 
-// ── Upload via Apps Script using chunked GET requests (bypasses LINE CORS) ──
+// ── Upload via Apps Script (no Google login needed) ──
 async function uploadViaAppsScript(blob, filename){
-  // Convert blob to base64
   const b64 = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result.split(',')[1]);
@@ -651,84 +650,36 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  const CHUNK = 50000; // 50KB chunks safe for URL
+  const CHUNK = 40000;
   const total = Math.ceil(b64.length / CHUNK);
-  const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const uid = Date.now().toString(36);
 
-  // Send each chunk as a GET request via image/script tag (never blocked by CORS)
-  async function sendChunk(i){
-    const chunk = b64.slice(i * CHUNK, (i+1) * CHUNK);
-    const url = CONFIG.APPS_SCRIPT_URL
-      + '?action=chunk'
-      + '&uid=' + uid
-      + '&i=' + i
-      + '&total=' + total
-      + '&filename=' + encodeURIComponent(filename)
-      + '&data=' + encodeURIComponent(chunk);
-
-    return new Promise((res, rej) => {
-      // Use script tag — completely bypasses CORS in all webviews
-      const s = document.createElement('script');
-      s.src = url + '&cb=__gas_cb_' + uid + '_' + i;
-      const cb = '__gas_cb_' + uid + '_' + i;
-      window[cb] = function(result){
-        delete window[cb];
-        document.head.removeChild(s);
-        res(result);
-      };
-      s.onerror = function(){
-        delete window[cb];
-        try{document.head.removeChild(s);}catch(e){}
-        // Script tag errors on CORS but request still went through
-        res({status:'ok'});
-      };
-      setTimeout(()=>{ res({status:'ok'}); }, 15000);
-      document.head.appendChild(s);
+  function getScript(url){
+    return new Promise((res) => {
+      const img = new Image();
+      img.onload = img.onerror = () => res();
+      img.src = url;
+      setTimeout(res, 10000);
     });
   }
 
-  // Send all chunks sequentially
+  // Send chunks
   for(let i = 0; i < total; i++){
-    setUploadStatus('uploading', 'Saving to Drive... ' + Math.round((i/total)*100) + '%');
-    await sendChunk(i);
-    await new Promise(r => setTimeout(r, 200)); // small delay between chunks
+    const chunk = encodeURIComponent(b64.slice(i*CHUNK, (i+1)*CHUNK));
+    const url = CONFIG.APPS_SCRIPT_URL + '?action=chunk&uid=' + uid + '&i=' + i + '&total=' + total + '&filename=' + encodeURIComponent(filename) + '&data=' + chunk;
+    setUploadStatus('uploading', 'Uploading... ' + Math.round(((i+1)/total)*90) + '%');
+    await getScript(url);
+    await new Promise(r => setTimeout(r, 300));
   }
 
-  // Trigger assembly
-  const assembleUrl = CONFIG.APPS_SCRIPT_URL
-    + '?action=assemble&uid=' + uid
-    + '&filename=' + encodeURIComponent(filename)
-    + '&total=' + total
-    + '&cb=__gas_assemble_' + uid;
-
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = assembleUrl;
-    window['__gas_assemble_' + uid] = function(result){
-      delete window['__gas_assemble_' + uid];
-      try{document.head.removeChild(s);}catch(e){}
-      if(result && result.status === 'ok') res(result);
-      else rej(new Error((result && result.message) || 'Assembly failed'));
-    };
-    s.onerror = function(){
-      delete window['__gas_assemble_' + uid];
-      try{document.head.removeChild(s);}catch(e){}
-      res({status:'ok', filename:filename});
-    };
-    setTimeout(()=>{ res({status:'ok', filename:filename}); }, 20000);
-    document.head.appendChild(s);
-  });
+  // Assemble
+  setUploadStatus('uploading', 'Saving to Drive...');
+  const assembleUrl = CONFIG.APPS_SCRIPT_URL + '?action=assemble&uid=' + uid + '&filename=' + encodeURIComponent(filename) + '&total=' + total;
+  await getScript(assembleUrl);
+  await new Promise(r => setTimeout(r, 2000));
+  return {status:'ok', filename:filename};
 }
 
-async function uploadToDrive(blob, filename, mime){
-  const boundary='-------medpac_bnd_'+Date.now();
-  const meta={name:filename,mimeType:mime,parents:[CONFIG.DRIVE_FOLDER_ID]};
-  const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(blob);});
-  const body='\r\n--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: '+mime+'\r\nContent-Transfer-Encoding: base64\r\n\r\n'+b64+'\r\n--'+boundary+'--';
-  const resp=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',{method:'POST',headers:{Authorization:'Bearer '+accessToken,'Content-Type':'multipart/related; boundary='+boundary},body});
-  if(!resp.ok){const e=await resp.json();throw new Error(e.error?.message||'Upload failed');}
-  return await resp.json();
-}
 
 async function submitReport(){
   if(!gv('cust-name')){showToast('Please enter customer name');return;}
