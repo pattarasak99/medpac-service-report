@@ -656,7 +656,7 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  const CHUNK = 5000; // small chunks for GET URL limit
+  const CHUNK = 8000; // safe URL size, faster than 5000
   const total = Math.ceil(b64.length / CHUNK);
   const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
   
@@ -680,7 +680,7 @@ async function uploadViaAppsScript(blob, filename){
     const result = JSON.parse(txt);
     if(result.status !== 'ok') throw new Error('Chunk ' + i + ' failed: ' + result.message);
     
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 100));
   }
 
   setUploadStatus('uploading', 'Saving to Google Drive...');
