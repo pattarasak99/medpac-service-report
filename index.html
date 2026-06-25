@@ -643,7 +643,7 @@ function buildPDF(){
   return doc;
 }
 
-// ── Upload via Apps Script via GET chunks (parallel) ──
+// ── Upload via Apps Script via GET chunks ──
 function isInLineWebview(){
   return /Line\//i.test(navigator.userAgent);
 }
@@ -660,27 +660,32 @@ async function uploadViaAppsScript(blob, filename){
   const total = Math.ceil(b64.length / CHUNK);
   const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 
-  console.log('Uploading', filename, '- chunks:', total);
-  setUploadStatus('uploading', 'Uploading ' + total + ' parts...');
+  console.log('Uploading:', filename, 'chunks:', total, 'uid:', uid);
 
-  // Send chunks in parallel batches of 5
-  const BATCH = 5;
-  for(let batch = 0; batch < total; batch += BATCH){
-    const promises = [];
-    for(let i = batch; i < Math.min(batch + BATCH, total); i++){
-      const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
-      const url = CONFIG.APPS_SCRIPT_URL
-        + '?action=chunk&uid=' + uid
-        + '&i=' + i + '&total=' + total
-        + '&filename=' + encodeURIComponent(filename)
-        + '&data=' + encodeURIComponent(chunk);
-      promises.push(fetch(url).then(r => r.json()));
+  for(let i = 0; i < total; i++){
+    const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
+    const url = CONFIG.APPS_SCRIPT_URL
+      + '?action=chunk&uid=' + uid
+      + '&i=' + i + '&total=' + total
+      + '&filename=' + encodeURIComponent(filename)
+      + '&data=' + encodeURIComponent(chunk);
+
+    setUploadStatus('uploading', 'Uploading ' + (i+1) + '/' + total + '...');
+    
+    let result;
+    for(let retry = 0; retry < 3; retry++){
+      try {
+        const resp = await fetch(url);
+        result = await resp.json();
+        break;
+      } catch(e){
+        console.warn('Chunk', i, 'retry', retry, e.message);
+        await new Promise(r => setTimeout(r, 500));
+      }
     }
-    const results = await Promise.all(promises);
-    const failed = results.find(r => r.status !== 'ok');
-    if(failed) throw new Error('Chunk failed: ' + (failed.message || 'unknown'));
-    const progress = Math.min(batch + BATCH, total);
-    setUploadStatus('uploading', 'Uploading ' + progress + '/' + total + '...');
+    if(!result || result.status !== 'ok'){
+      throw new Error('Failed at chunk ' + (i+1) + ' of ' + total);
+    }
   }
 
   setUploadStatus('uploading', 'Saving to Google Drive...');
