@@ -461,7 +461,7 @@ function fetchUser(){
 }
 function renderUserBadge(info){
   const ini=((info.given_name||'?')[0]+(info.family_name||'?')[0]).toUpperCase();
-  document.getElementById('uini').textContent=ini;
+  const uiniEl=document.getElementById('uini'); if(uiniEl) uiniEl.textContent=ini;
   document.getElementById('uname').textContent=info.given_name||info.email.split('@')[0];
   if(info.picture){document.getElementById('uav').innerHTML='<img src="'+info.picture+'" alt="'+ini+'">';}
 }
@@ -485,7 +485,6 @@ function showApp(){
     if(gdb) gdb.style.display='block';
   }
   // Handle upload triggered from external browser
-  handleExternalUpload();
 }
 function checkCfg(){if(CONFIG.GOOGLE_CLIENT_ID==='YOUR_CLIENT_ID.apps.googleusercontent.com'||CONFIG.DRIVE_FOLDER_ID==='YOUR_DRIVE_FOLDER_ID')document.getElementById('cfg-warn').style.display='block';}
 
