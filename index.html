@@ -651,36 +651,49 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  // Apps Script requires no-cors for cross-origin POST
-  // We use no-cors mode and treat any response as success
-  // (Apps Script CORS headers only work with GET, not POST from browsers)
+  // Use a hidden form + iframe to POST to Apps Script — bypasses CORS entirely
   return new Promise((resolve, reject) => {
-    // Use XMLHttpRequest which handles redirects better than fetch for Apps Script
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', CONFIG.APPS_SCRIPT_URL, true);
-    xhr.setRequestHeader('Content-Type', 'text/plain');
-    xhr.timeout = 30000;
-    xhr.onload = function(){
-      try {
-        const result = JSON.parse(xhr.responseText);
-        if(result.status === 'ok') resolve(result);
-        else reject(new Error(result.message || 'Upload failed'));
-      } catch(e){
-        // If we get any 2xx response, treat as success
-        if(xhr.status >= 200 && xhr.status < 400){
-          resolve({status:'ok', filename:filename});
-        } else {
-          reject(new Error('Upload failed: HTTP ' + xhr.status));
-        }
-      }
-    };
-    xhr.onerror = function(){
-      // Network error — but Apps Script may have still processed it
-      // Resolve optimistically since Apps Script often triggers even on CORS error
+    const iframeName = 'gas_upload_' + Date.now();
+    const iframe = document.createElement('iframe');
+    iframe.name = iframeName;
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = CONFIG.APPS_SCRIPT_URL;
+    form.target = iframeName;
+    form.style.display = 'none';
+
+    // Send data as a single hidden input
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'data';
+    input.value = JSON.stringify({pdf: b64, filename: filename});
+    form.appendChild(input);
+    document.body.appendChild(form);
+
+    // Listen for iframe load = Apps Script responded
+    let done = false;
+    iframe.onload = function(){
+      if(done) return;
+      done = true;
+      setTimeout(()=>{
+        document.body.removeChild(form);
+        document.body.removeChild(iframe);
+      }, 1000);
       resolve({status:'ok', filename:filename});
     };
-    xhr.ontimeout = function(){ reject(new Error('Upload timed out')); };
-    xhr.send(JSON.stringify({pdf: b64, filename: filename}));
+
+    // Timeout fallback
+    setTimeout(()=>{
+      if(done) return;
+      done = true;
+      try{ document.body.removeChild(form); document.body.removeChild(iframe); }catch(e){}
+      reject(new Error('Upload timed out after 30s'));
+    }, 30000);
+
+    form.submit();
   });
 }
 
