@@ -819,18 +819,43 @@ document.addEventListener('DOMContentLoaded', async function(){
     return;
   }
 
-  // Inside LINE app — open external browser immediately
+  // Inside LINE app — show Open in Browser button
   if(liff.isInClient()){
-    document.getElementById('auth-screen').innerHTML =
-      '<div style="text-align:center;padding:32px">' +
-      '<p style="font-size:18px;font-weight:600;color:#185FA5">MEDPAC Service Report</p>' +
-      '<p style="color:#1D9E75;font-size:15px;margin-top:16px">&#9203; Opening in browser...</p>' +
-      '<p style="color:#888;font-size:13px;margin-top:8px">Please wait a moment</p>' +
-      '</div>';
-    liff.openWindow({
-      url: 'https://pattarasak99.github.io/medpac-service-report/',
-      external: true
-    });
+    var authEl = document.getElementById('auth-screen');
+    authEl.innerHTML = '';
+    authEl.style.gap = '20px';
+
+    var icon = document.createElement('div');
+    icon.style.cssText = 'font-size:56px';
+    icon.textContent = '📋';
+
+    var title = document.createElement('h2');
+    title.style.cssText = 'color:#185FA5;font-size:22px;font-weight:700;margin:0';
+    title.textContent = 'MEDPAC Service Report';
+
+    var desc = document.createElement('p');
+    desc.style.cssText = 'color:#666;font-size:14px;margin:0;max-width:280px;text-align:center;line-height:1.6';
+    desc.innerHTML = 'กรุณาเปิดในเบราว์เซอร์เพื่อกรอกใบรายงาน<br><br>Please open in your browser to fill the service report.';
+
+    var btn = document.createElement('button');
+    btn.style.cssText = 'padding:16px 40px;background:#06C755;border:none;border-radius:12px;color:#fff;font-size:17px;font-weight:700;cursor:pointer;width:100%;max-width:280px;box-shadow:0 4px 16px rgba(6,199,85,.4)';
+    btn.textContent = '🌐 Open in Browser';
+    btn.onclick = function(){
+      liff.openWindow({
+        url: 'https://pattarasak99.github.io/medpac-service-report/',
+        external: true
+      });
+    };
+
+    var note = document.createElement('p');
+    note.style.cssText = 'color:#aaa;font-size:12px;margin:0;text-align:center';
+    note.textContent = 'แตะปุ่มเพื่อเปิด Safari หรือ Chrome';
+
+    authEl.appendChild(icon);
+    authEl.appendChild(title);
+    authEl.appendChild(desc);
+    authEl.appendChild(btn);
+    authEl.appendChild(note);
     return;
   }
 
