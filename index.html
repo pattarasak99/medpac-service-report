@@ -643,20 +643,19 @@ function buildPDF(){
   return doc;
 }
 
-// ── Upload via Apps Script via Cloudflare Worker proxy ──
+// ── Upload via Cloudflare Worker proxy ──
 function isInLineWebview(){
   return /Line\//i.test(navigator.userAgent);
 }
 
 const WORKER = 'https://medpacservicereport.j-pattarasak.workers.dev';
 
-async function proxyFetch(url){
-  // Don't double-encode — Worker will receive the URL as-is
-  const proxyUrl = WORKER + '/?url=' + encodeURIComponent(url);
+async function proxyGet(gasUrl){
+  const proxyUrl = WORKER + '/?url=' + encodeURIComponent(gasUrl);
   const resp = await fetch(proxyUrl);
   const txt = await resp.text();
   try { return JSON.parse(txt); }
-  catch(e){ throw new Error('Invalid response: ' + txt.slice(0,100)); }
+  catch(e){ throw new Error('Bad response: ' + txt.slice(0,80)); }
 }
 
 async function uploadViaAppsScript(blob, filename){
@@ -675,18 +674,22 @@ async function uploadViaAppsScript(blob, filename){
 
   for(let i = 0; i < total; i++){
     const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
-    const url = CONFIG.APPS_SCRIPT_URL
+    // Send chunk data via POST body to avoid URL length limits
+    const gasUrl = CONFIG.APPS_SCRIPT_URL
       + '?action=chunk&uid=' + uid
       + '&i=' + i + '&total=' + total
-      + '&filename=' + encodeURIComponent(filename)
-      + '&data=' + encodeURIComponent(chunk);
-
+      + '&filename=' + encodeURIComponent(filename);
+    
+    const proxyUrl = WORKER + '/?url=' + encodeURIComponent(gasUrl + '&data=' + encodeURIComponent(chunk));
+    
     setUploadStatus('uploading', 'Uploading ' + (i+1) + '/' + total + '...');
     
     let result;
     for(let retry = 0; retry < 3; retry++){
       try {
-        result = await proxyFetch(url);
+        const resp = await fetch(proxyUrl);
+        const txt = await resp.text();
+        result = JSON.parse(txt);
         break;
       } catch(e){
         console.warn('Chunk', i, 'retry', retry, e.message);
@@ -694,7 +697,7 @@ async function uploadViaAppsScript(blob, filename){
       }
     }
     if(!result || result.status !== 'ok'){
-      throw new Error('Failed at chunk ' + (i+1) + ' of ' + total);
+      throw new Error('Failed at chunk ' + (i+1) + '/' + total + ': ' + (result && result.message || 'unknown'));
     }
   }
 
@@ -704,7 +707,7 @@ async function uploadViaAppsScript(blob, filename){
     + '&filename=' + encodeURIComponent(filename)
     + '&total=' + total;
   
-  const result = await proxyFetch(aUrl);
+  const result = await proxyGet(aUrl);
   if(result.status !== 'ok') throw new Error(result.message || 'Assembly failed');
   return result;
 }
