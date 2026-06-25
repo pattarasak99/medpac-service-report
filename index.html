@@ -651,9 +651,12 @@ function isInLineWebview(){
 const WORKER = 'https://medpacservicereport.j-pattarasak.workers.dev';
 
 async function proxyFetch(url){
+  // Don't double-encode — Worker will receive the URL as-is
   const proxyUrl = WORKER + '/?url=' + encodeURIComponent(url);
   const resp = await fetch(proxyUrl);
-  return resp.json();
+  const txt = await resp.text();
+  try { return JSON.parse(txt); }
+  catch(e){ throw new Error('Invalid response: ' + txt.slice(0,100)); }
 }
 
 async function uploadViaAppsScript(blob, filename){
