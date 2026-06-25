@@ -510,7 +510,7 @@ function attachParts(){document.querySelectorAll('.qty-i,.price-i').forEach(i=>{
 attachParts();
 function getParts(){return Array.from(document.querySelectorAll('#parts-body tr')).map(tr=>{const i=tr.querySelectorAll('input');return{desc:i[0]?.value.trim()||'',pn:i[1]?.value.trim()||'',qty:i[2]?.value||'',price:i[3]?.value||''};}).filter(r=>r.desc||r.pn);}
 
-function handlePhotos(input){Array.from(input.files).forEach(file=>{const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{const MAX=1200;let w=img.width,h=img.height;if(w>MAX||h>MAX){const ratio=Math.min(MAX/w,MAX/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);attachedPhotos.push({id:Date.now()+Math.random(),dataUrl:cv.toDataURL('image/jpeg',.78),caption:''});renderPhotos();};img.src=e.target.result;};reader.readAsDataURL(file);});input.value='';}
+function handlePhotos(input){Array.from(input.files).forEach(file=>{const reader=new FileReader();reader.onload=e=>{const img=new Image();img.onload=()=>{const MAX=800;let w=img.width,h=img.height;if(w>MAX||h>MAX){const ratio=Math.min(MAX/w,MAX/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);attachedPhotos.push({id:Date.now()+Math.random(),dataUrl:cv.toDataURL('image/jpeg',.35),caption:''});renderPhotos();};img.src=e.target.result;};reader.readAsDataURL(file);});input.value='';}
 function renderPhotos(){const grid=document.getElementById('photo-grid');grid.innerHTML='';attachedPhotos.forEach((p,i)=>{const div=document.createElement('div');div.className='photo-item';div.innerHTML='<div class="thumb"><img src="'+p.dataUrl+'" alt="Photo '+(i+1)+'"><button class="del-photo" onclick="removePhoto('+i+')" aria-label="Remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><input type="text" placeholder="Caption (optional)" value="'+p.caption+'" oninput="attachedPhotos['+i+'].caption=this.value">';grid.appendChild(div);});}
 function removePhoto(i){attachedPhotos.splice(i,1);renderPhotos();}
 
@@ -656,7 +656,7 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  const CHUNK = 8000; // safe URL size, faster than 5000
+  const CHUNK = 15000; // larger chunks for faster upload
   const total = Math.ceil(b64.length / CHUNK);
   const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
   
