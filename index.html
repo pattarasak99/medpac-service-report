@@ -643,9 +643,17 @@ function buildPDF(){
   return doc;
 }
 
-// ── Upload via Apps Script via GET chunks (no-cors) ──
+// ── Upload via Apps Script via Cloudflare Worker proxy ──
 function isInLineWebview(){
   return /Line\//i.test(navigator.userAgent);
+}
+
+const WORKER = 'https://medpacservicereport.j-pattarasak.workers.dev';
+
+async function proxyFetch(url){
+  const proxyUrl = WORKER + '/?url=' + encodeURIComponent(url);
+  const resp = await fetch(proxyUrl);
+  return resp.json();
 }
 
 async function uploadViaAppsScript(blob, filename){
@@ -662,7 +670,6 @@ async function uploadViaAppsScript(blob, filename){
 
   console.log('Uploading:', filename, 'chunks:', total, 'uid:', uid);
 
-  // Send all chunks using no-cors (Apps Script receives them, we can't read response)
   for(let i = 0; i < total; i++){
     const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
     const url = CONFIG.APPS_SCRIPT_URL
@@ -673,24 +680,30 @@ async function uploadViaAppsScript(blob, filename){
 
     setUploadStatus('uploading', 'Uploading ' + (i+1) + '/' + total + '...');
     
-    await fetch(url, { mode: 'no-cors' }).catch(e => console.warn('chunk', i, e.message));
-    await new Promise(r => setTimeout(r, 150));
+    let result;
+    for(let retry = 0; retry < 3; retry++){
+      try {
+        result = await proxyFetch(url);
+        break;
+      } catch(e){
+        console.warn('Chunk', i, 'retry', retry, e.message);
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    if(!result || result.status !== 'ok'){
+      throw new Error('Failed at chunk ' + (i+1) + ' of ' + total);
+    }
   }
 
-  // Send assemble request
   setUploadStatus('uploading', 'Saving to Google Drive...');
   const aUrl = CONFIG.APPS_SCRIPT_URL
     + '?action=assemble&uid=' + uid
     + '&filename=' + encodeURIComponent(filename)
     + '&total=' + total;
   
-  await fetch(aUrl, { mode: 'no-cors' }).catch(e => console.warn('assemble', e.message));
-  
-  // Wait for Apps Script to process
-  await new Promise(r => setTimeout(r, 3000));
-  
-  // Return success — we can't read the response with no-cors but the request went through
-  return { status: 'ok', filename: filename };
+  const result = await proxyFetch(aUrl);
+  if(result.status !== 'ok') throw new Error(result.message || 'Assembly failed');
+  return result;
 }
 
 
