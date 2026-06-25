@@ -656,57 +656,48 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  const CHUNK = 30000;
+  setUploadStatus('uploading', 'Uploading to Google Drive...');
+  console.log('PDF size (base64):', b64.length, 'filename:', filename);
+
+  // Try direct POST first (works in Safari)
+  try {
+    const resp = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upload', pdf: b64, filename: filename })
+    });
+    const result = await resp.json();
+    console.log('Direct upload result:', result);
+    if(result.status === 'ok') return result;
+    throw new Error(result.message || 'Upload failed');
+  } catch(e){
+    console.warn('Direct POST failed:', e.message, '— trying chunked...');
+  }
+
+  // Fallback: chunked GET
+  const CHUNK = 60000;
   const total = Math.ceil(b64.length / CHUNK);
-  const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  const uid = Date.now().toString(36);
 
-  console.log('Starting upload:', filename, 'chunks:', total, 'uid:', uid);
+  console.log('Chunked upload:', total, 'chunks');
 
-  // Send each chunk
   for(let i = 0; i < total; i++){
     const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
-    const url = CONFIG.APPS_SCRIPT_URL
-      + '?action=chunk'
-      + '&uid=' + encodeURIComponent(uid)
-      + '&i=' + i
-      + '&total=' + total
-      + '&filename=' + encodeURIComponent(filename)
-      + '&data=' + encodeURIComponent(chunk);
-
     setUploadStatus('uploading', 'Uploading ' + (i+1) + '/' + total + '...');
-    
-    try {
-      const resp = await fetch(url);
-      const txt = await resp.text();
-      console.log('Chunk', i, 'response:', txt.slice(0,100));
-    } catch(e){
-      console.warn('Chunk', i, 'fetch error:', e.message);
-      throw new Error('Failed at chunk ' + i + ': ' + e.message);
-    }
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  // Assemble
-  setUploadStatus('uploading', 'Saving to Google Drive...');
-  const assembleUrl = CONFIG.APPS_SCRIPT_URL
-    + '?action=assemble'
-    + '&uid=' + encodeURIComponent(uid)
-    + '&filename=' + encodeURIComponent(filename)
-    + '&total=' + total;
-
-  console.log('Assembling:', assembleUrl.slice(0, 100));
-
-  try {
-    const resp = await fetch(assembleUrl);
+    const url = CONFIG.APPS_SCRIPT_URL + '?action=chunk&uid=' + uid + '&i=' + i + '&total=' + total + '&filename=' + encodeURIComponent(filename) + '&data=' + encodeURIComponent(chunk);
+    const resp = await fetch(url);
     const txt = await resp.text();
-    console.log('Assemble response:', txt);
-    const result = JSON.parse(txt);
-    if(result.status !== 'ok') throw new Error(result.message || 'Assembly failed');
-    return result;
-  } catch(e){
-    console.warn('Assemble error:', e.message);
-    throw new Error('Save failed: ' + e.message);
+    console.log('Chunk', i, ':', txt.slice(0,80));
+    await new Promise(r => setTimeout(r, 100));
   }
+
+  setUploadStatus('uploading', 'Saving file...');
+  const aUrl = CONFIG.APPS_SCRIPT_URL + '?action=assemble&uid=' + uid + '&filename=' + encodeURIComponent(filename) + '&total=' + total;
+  const aResp = await fetch(aUrl);
+  const result = JSON.parse(await aResp.text());
+  console.log('Assemble result:', result);
+  if(result.status !== 'ok') throw new Error(result.message || 'Assembly failed');
+  return result;
 }
 
 
