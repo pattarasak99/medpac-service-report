@@ -656,87 +656,56 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  const CHUNK = 40000;
+  const CHUNK = 30000;
   const total = Math.ceil(b64.length / CHUNK);
-  const uid = Date.now().toString(36);
+  const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 
+  console.log('Starting upload:', filename, 'chunks:', total, 'uid:', uid);
+
+  // Send each chunk
   for(let i = 0; i < total; i++){
     const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
     const url = CONFIG.APPS_SCRIPT_URL
-      + '?action=chunk&uid=' + uid
-      + '&i=' + i + '&total=' + total
+      + '?action=chunk'
+      + '&uid=' + encodeURIComponent(uid)
+      + '&i=' + i
+      + '&total=' + total
       + '&filename=' + encodeURIComponent(filename)
       + '&data=' + encodeURIComponent(chunk);
+
+    setUploadStatus('uploading', 'Uploading ' + (i+1) + '/' + total + '...');
     
-    setUploadStatus('uploading', 'Uploading... ' + Math.round(((i+1)/total)*90) + '%');
-    await fetch(url).catch(()=>{});
-    await new Promise(r => setTimeout(r, 200));
+    try {
+      const resp = await fetch(url);
+      const txt = await resp.text();
+      console.log('Chunk', i, 'response:', txt.slice(0,100));
+    } catch(e){
+      console.warn('Chunk', i, 'fetch error:', e.message);
+      throw new Error('Failed at chunk ' + i + ': ' + e.message);
+    }
+    await new Promise(r => setTimeout(r, 300));
   }
 
-  setUploadStatus('uploading', 'Saving to Drive...');
+  // Assemble
+  setUploadStatus('uploading', 'Saving to Google Drive...');
   const assembleUrl = CONFIG.APPS_SCRIPT_URL
-    + '?action=assemble&uid=' + uid
+    + '?action=assemble'
+    + '&uid=' + encodeURIComponent(uid)
     + '&filename=' + encodeURIComponent(filename)
     + '&total=' + total;
-  
-  const resp = await fetch(assembleUrl);
-  const result = await resp.json();
-  if(result.status !== 'ok') throw new Error(result.message || 'Failed');
-  return result;
-}
 
-// Handle upload when opened in external browser from LINE
-async function handleExternalUpload(){
-  const params = new URLSearchParams(window.location.search);
-  if(params.get('upload') !== '1') return;
-  
-  // Show uploading immediately
-  document.getElementById('auth-screen').style.display='none';
-  document.getElementById('app-screen').style.display='block';
-  
-  const filename = decodeURIComponent(params.get('filename') || '');
-  const b64 = params.get('pdf') || '';
-  
-  if(!b64 || !filename){
-    showToast('No PDF data found');
-    return;
-  }
-
-  setUploadStatus('uploading', 'Uploading PDF to Google Drive...');
+  console.log('Assembling:', assembleUrl.slice(0, 100));
 
   try {
-    const CHUNK = 40000;
-    const total = Math.ceil(b64.length / CHUNK);
-    const uid = Date.now().toString(36);
-
-    for(let i = 0; i < total; i++){
-      const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
-      const url = CONFIG.APPS_SCRIPT_URL
-        + '?action=chunk&uid=' + uid
-        + '&i=' + i + '&total=' + total
-        + '&filename=' + encodeURIComponent(filename)
-        + '&data=' + encodeURIComponent(chunk);
-      setUploadStatus('uploading', 'Uploading... ' + Math.round(((i+1)/total)*90) + '%');
-      await fetch(url);
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    const assembleUrl = CONFIG.APPS_SCRIPT_URL
-      + '?action=assemble&uid=' + uid
-      + '&filename=' + encodeURIComponent(filename)
-      + '&total=' + total;
-    
     const resp = await fetch(assembleUrl);
-    const result = await resp.json();
-    
-    if(result.status === 'ok'){
-      setUploadStatus('success', '✅ Saved to Google Drive: ' + filename);
-      showToast('✅ Report saved! You can close this tab.', 8000);
-    } else {
-      throw new Error(result.message);
-    }
-  } catch(err){
-    setUploadStatus('error', '❌ Upload failed: ' + err.message);
+    const txt = await resp.text();
+    console.log('Assemble response:', txt);
+    const result = JSON.parse(txt);
+    if(result.status !== 'ok') throw new Error(result.message || 'Assembly failed');
+    return result;
+  } catch(e){
+    console.warn('Assemble error:', e.message);
+    throw new Error('Save failed: ' + e.message);
   }
 }
 
