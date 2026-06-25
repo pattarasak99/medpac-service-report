@@ -723,34 +723,8 @@ async function submitReport(){
     setUploadStatus('uploading','Generating PDF...');
     const pdfDoc=buildPDF();
     const pdfBlob=pdfDoc.output('blob');
-    // Use Apps Script — no Google login needed
+    // Use Apps Script — no Google login needed (works in LINE and all browsers)
     if(CONFIG.APPS_SCRIPT_URL){
-      // If in LINE webview, open in external browser with PDF data
-      if(isInLineWebview()){
-        setUploadStatus('uploading','Opening browser to save PDF...');
-        const b64 = await new Promise((res,rej)=>{
-          const r=new FileReader();
-          r.onload=()=>res(r.result.split(',')[1]);
-          r.onerror=rej;
-          r.readAsDataURL(pdfBlob);
-        });
-        // Build URL with PDF data
-        const uploadUrl = window.location.href.split('?')[0]
-          + '?upload=1'
-          + '&filename=' + encodeURIComponent(fname+'.pdf')
-          + '&pdf=' + encodeURIComponent(b64);
-        
-        if(window.liff && liff.isInClient()){
-          liff.openWindow({ url: uploadUrl, external: true });
-        } else {
-          window.open(uploadUrl, '_blank');
-        }
-        setUploadStatus('success','✅ Opening browser to save to Drive...');
-        showToast('Please wait for browser to open and upload ✅', 5000);
-        btn.disabled=false;
-        return;
-      }
-
       setUploadStatus('uploading','Saving to Google Drive...');
       await uploadViaAppsScript(pdfBlob, fname+'.pdf');
       setUploadStatus('success','✅ Saved: '+fname+'.pdf');
