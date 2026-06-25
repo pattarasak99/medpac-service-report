@@ -778,15 +778,18 @@ document.addEventListener('DOMContentLoaded', async function(){
     btn.style.cssText = 'padding:16px 40px;background:#06C755;border:none;border-radius:12px;color:#fff;font-size:17px;font-weight:700;cursor:pointer;width:100%;max-width:280px;box-shadow:0 4px 16px rgba(6,199,85,.4)';
     btn.textContent = '🌐 Open in Browser';
     btn.onclick = function(){
-      liff.openWindow({
-        url: 'https://pattarasak99.github.io/medpac-service-report/',
-        external: true
-      });
+      // Try multiple methods to open external browser
+      var url = 'https://pattarasak99.github.io/medpac-service-report/';
+      try {
+        liff.openWindow({ url: url, external: true });
+      } catch(e) {
+        window.open(url, '_blank');
+      }
     };
 
     var note = document.createElement('p');
     note.style.cssText = 'color:#aaa;font-size:12px;margin:0;text-align:center';
-    note.textContent = 'แตะปุ่มเพื่อเปิด Safari หรือ Chrome';
+    note.innerHTML = 'แตะปุ่มเพื่อเปิด Safari หรือ Chrome<br><small style="color:#bbb">หากไม่เปิดอัตโนมัติ กรุณาคัดลอก URL นี้:<br>pattarasak99.github.io/medpac-service-report</small>';
 
     authEl.appendChild(icon);
     authEl.appendChild(title);
