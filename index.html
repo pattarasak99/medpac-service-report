@@ -26,7 +26,7 @@
     GOOGLE_CLIENT_ID: '502871851526-mvvf70ncmdq1fulivgugqbgf9baeq8t9.apps.googleusercontent.com',
     DRIVE_FOLDER_ID:  '1plqZuATHNtUc6ibN6HYL43ahMIfC-Zph',
     LIFF_ID: '2010502466-XXOwM6wJ',
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby-J8qAQemPXpHw20WYWRa3DMOzjUozRVw-2bkTgBA8CEOg0cS3veMejPeNkVdtbgbRyg/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwYHyWtzK9BWydOvjqcL89SNj5b8LqnTVFQU9lwnkyuBN0x7qA17EBwpYzsvJUhYcuj/exec',
   };
 </script>
 <style>
@@ -649,7 +649,6 @@ function isInLineWebview(){
 }
 
 async function uploadViaAppsScript(blob, filename){
-  // Compress photos before converting to base64
   const b64 = await new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(r.result.split(',')[1]);
@@ -657,24 +656,32 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  console.log('PDF b64 size:', b64.length);
   setUploadStatus('uploading', 'Uploading to Google Drive...');
+  console.log('Uploading:', filename, 'b64 size:', b64.length);
 
-  // Try direct POST (works in Safari/Chrome)
+  // Use form-encoded POST (bypasses Google redirect issue)
+  const formData = new URLSearchParams();
+  formData.append('pdf', b64);
+  formData.append('filename', filename);
+
+  const resp = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: formData.toString()
+  });
+
+  const text = await resp.text();
+  console.log('Response:', text.slice(0, 200));
+
+  let result;
   try {
-    const resp = await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action:'upload', pdf:b64, filename:filename})
-    });
-    const result = await resp.json();
-    console.log('POST result:', result);
-    if(result.status === 'ok') return result;
-    throw new Error(result.message || 'POST failed');
-  } catch(e){
-    console.warn('Direct POST failed:', e.message);
-    throw new Error('Upload failed. Please try without photos or use a smaller photo.');
+    result = JSON.parse(text);
+  } catch(e) {
+    throw new Error('Invalid response from server: ' + text.slice(0,100));
   }
+
+  if(result.status !== 'ok') throw new Error(result.message || 'Upload failed');
+  return result;
 }
 
 
