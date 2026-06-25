@@ -644,9 +644,8 @@ function buildPDF(){
 }
 
 // ── Upload via Apps Script ──
-// Detects if inside LINE webview and opens Safari instead
 function isInLineWebview(){
-  return /Line/i.test(navigator.userAgent);
+  return /Line\//i.test(navigator.userAgent);
 }
 
 async function uploadViaAppsScript(blob, filename){
@@ -657,71 +656,6 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  // If inside LINE — open in external browser instead
-  if(isInLineWebview()){
-    // Store PDF data temporarily and open upload page in Safari
-    const uploadUrl = CONFIG.APPS_SCRIPT_URL
-      + '?action=upload'
-      + '&filename=' + encodeURIComponent(filename)
-      + '&source=' + encodeURIComponent(window.location.href);
-
-    // Use liff.openWindow to open in external browser
-    if(window.liff && liff.isInClient()){
-      // Send chunks via LIFF external browser
-      sessionStorage.setItem('pending_pdf', b64);
-      sessionStorage.setItem('pending_filename', filename);
-      liff.openWindow({
-        url: window.location.href + '?upload=1&filename=' + encodeURIComponent(filename),
-        external: true
-      });
-      // Return optimistic success - upload will happen in Safari
-      await new Promise(r => setTimeout(r, 1000));
-      return {status:'ok', filename:filename};
-    }
-  }
-
-  // Normal browser (Safari/Chrome) - direct upload via chunks
-  const CHUNK = 40000;
-  const total = Math.ceil(b64.length / CHUNK);
-  const uid = Date.now().toString(36);
-
-  for(let i = 0; i < total; i++){
-    const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
-    const url = CONFIG.APPS_SCRIPT_URL
-      + '?action=chunk&uid=' + uid
-      + '&i=' + i
-      + '&total=' + total
-      + '&filename=' + encodeURIComponent(filename)
-      + '&data=' + encodeURIComponent(chunk);
-    
-    setUploadStatus('uploading', 'Uploading... ' + Math.round(((i+1)/total)*90) + '%');
-    
-    await fetch(url, {mode:'no-cors'}).catch(()=>{});
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  setUploadStatus('uploading', 'Saving to Drive...');
-  const assembleUrl = CONFIG.APPS_SCRIPT_URL
-    + '?action=assemble&uid=' + uid
-    + '&filename=' + encodeURIComponent(filename)
-    + '&total=' + total;
-  
-  await fetch(assembleUrl, {mode:'no-cors'}).catch(()=>{});
-  await new Promise(r => setTimeout(r, 3000));
-  return {status:'ok', filename:filename};
-}
-
-// Handle upload triggered from external browser
-async function handleExternalUpload(){
-  const params = new URLSearchParams(window.location.search);
-  if(params.get('upload') !== '1') return;
-  
-  const filename = params.get('filename');
-  const b64 = sessionStorage.getItem('pending_pdf');
-  if(!b64 || !filename) return;
-
-  setUploadStatus('uploading', 'Uploading to Drive from Safari...');
-  
   const CHUNK = 40000;
   const total = Math.ceil(b64.length / CHUNK);
   const uid = Date.now().toString(36);
@@ -733,10 +667,13 @@ async function handleExternalUpload(){
       + '&i=' + i + '&total=' + total
       + '&filename=' + encodeURIComponent(filename)
       + '&data=' + encodeURIComponent(chunk);
+    
+    setUploadStatus('uploading', 'Uploading... ' + Math.round(((i+1)/total)*90) + '%');
     await fetch(url).catch(()=>{});
     await new Promise(r => setTimeout(r, 200));
   }
 
+  setUploadStatus('uploading', 'Saving to Drive...');
   const assembleUrl = CONFIG.APPS_SCRIPT_URL
     + '?action=assemble&uid=' + uid
     + '&filename=' + encodeURIComponent(filename)
@@ -744,12 +681,62 @@ async function handleExternalUpload(){
   
   const resp = await fetch(assembleUrl);
   const result = await resp.json();
+  if(result.status !== 'ok') throw new Error(result.message || 'Failed');
+  return result;
+}
+
+// Handle upload when opened in external browser from LINE
+async function handleExternalUpload(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('upload') !== '1') return;
   
-  if(result.status === 'ok'){
-    sessionStorage.removeItem('pending_pdf');
-    sessionStorage.removeItem('pending_filename');
-    setUploadStatus('success', '✅ Saved to Google Drive: ' + filename);
-    showToast('✅ Report saved to Google Drive!', 5000);
+  // Show uploading immediately
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  
+  const filename = decodeURIComponent(params.get('filename') || '');
+  const b64 = params.get('pdf') || '';
+  
+  if(!b64 || !filename){
+    showToast('No PDF data found');
+    return;
+  }
+
+  setUploadStatus('uploading', 'Uploading PDF to Google Drive...');
+
+  try {
+    const CHUNK = 40000;
+    const total = Math.ceil(b64.length / CHUNK);
+    const uid = Date.now().toString(36);
+
+    for(let i = 0; i < total; i++){
+      const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
+      const url = CONFIG.APPS_SCRIPT_URL
+        + '?action=chunk&uid=' + uid
+        + '&i=' + i + '&total=' + total
+        + '&filename=' + encodeURIComponent(filename)
+        + '&data=' + encodeURIComponent(chunk);
+      setUploadStatus('uploading', 'Uploading... ' + Math.round(((i+1)/total)*90) + '%');
+      await fetch(url);
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    const assembleUrl = CONFIG.APPS_SCRIPT_URL
+      + '?action=assemble&uid=' + uid
+      + '&filename=' + encodeURIComponent(filename)
+      + '&total=' + total;
+    
+    const resp = await fetch(assembleUrl);
+    const result = await resp.json();
+    
+    if(result.status === 'ok'){
+      setUploadStatus('success', '✅ Saved to Google Drive: ' + filename);
+      showToast('✅ Report saved! You can close this tab.', 8000);
+    } else {
+      throw new Error(result.message);
+    }
+  } catch(err){
+    setUploadStatus('error', '❌ Upload failed: ' + err.message);
   }
 }
 
@@ -767,6 +754,32 @@ async function submitReport(){
     const pdfBlob=pdfDoc.output('blob');
     // Use Apps Script — no Google login needed
     if(CONFIG.APPS_SCRIPT_URL){
+      // If in LINE webview, open in external browser with PDF data
+      if(isInLineWebview()){
+        setUploadStatus('uploading','Opening browser to save PDF...');
+        const b64 = await new Promise((res,rej)=>{
+          const r=new FileReader();
+          r.onload=()=>res(r.result.split(',')[1]);
+          r.onerror=rej;
+          r.readAsDataURL(pdfBlob);
+        });
+        // Build URL with PDF data
+        const uploadUrl = window.location.href.split('?')[0]
+          + '?upload=1'
+          + '&filename=' + encodeURIComponent(fname+'.pdf')
+          + '&pdf=' + encodeURIComponent(b64);
+        
+        if(window.liff && liff.isInClient()){
+          liff.openWindow({ url: uploadUrl, external: true });
+        } else {
+          window.open(uploadUrl, '_blank');
+        }
+        setUploadStatus('success','✅ Opening browser to save to Drive...');
+        showToast('Please wait for browser to open and upload ✅', 5000);
+        btn.disabled=false;
+        return;
+      }
+
       setUploadStatus('uploading','Saving to Google Drive...');
       await uploadViaAppsScript(pdfBlob, fname+'.pdf');
       setUploadStatus('success','✅ Saved: '+fname+'.pdf');
