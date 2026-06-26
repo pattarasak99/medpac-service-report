@@ -710,7 +710,7 @@ async function uploadViaAppsScript(blob, filename){
     r.readAsDataURL(blob);
   });
 
-  const CHUNK = 800;
+  const CHUNK = 50000;
   const total = Math.ceil(b64.length / CHUNK);
   const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 
