@@ -161,6 +161,16 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
 #cfg-warn{background:#FFF3CD;border:1px solid #FFD54F;border-radius:var(--rs);padding:12px 16px;font-size:13px;color:#7B5800;margin-bottom:12px;display:none}
 #cfg-warn strong{display:block;margin-bottom:4px}
 @media(max-width:400px){.charge-grid{grid-template-columns:1fr}.eng-row{grid-template-columns:1fr auto}}
+
+  /* Service day rows */
+  .day-row { margin-bottom: 8px; }
+  .day-row-inner { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .day-field { display: flex; flex-direction: column; gap: 4px; }
+  .day-field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .day-field input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); }
+  .day-field.day-hrs input { width: 70px; }
+  .day-del { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 1px; }
+  .day-del:hover { background: #fee; color: #c00; border-color: #fcc; }
 </style>
 </head>
 <body>
@@ -284,10 +294,16 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
         Job details
       </div>
       <div class="fg">
-        <div class="field"><label>Date of service *</label><input type="date" id="svc-date"></div>
-        <div class="field"><label>Equipment / product</label><input type="text" id="equipment" placeholder="Name, model, S/N"></div>
-        <div class="field"><label>Time started</label><input type="time" id="time-start"></div>
-        <div class="field"><label>Time completed</label><input type="time" id="time-end"></div>
+        <div class="field f2"><label>Equipment / product</label><input type="text" id="equipment" placeholder="Name, model, S/N"></div>
+        <div class="field f2" style="display:none"><input type="date" id="svc-date"></div>
+      </div>
+      <!-- Service Days -->
+      <div style="margin-top:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Service Days *</div>
+        <div id="days-list"></div>
+        <button type="button" onclick="addServiceDay()" style="margin-top:8px;padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">+ Add Day</button>
+      </div>
+      <div class="fg" style="margin-top:0">
         <div class="field f1"><label>Problem / complaint reported</label><textarea id="problem" placeholder="Describe the issue reported by the customer..."></textarea></div>
         <div class="field f1"><label>Work performed</label><textarea id="work-done" placeholder="Describe all work carried out, tests performed, findings..."></textarea></div>
         <div class="field f1"><label>Recommendation / follow-up</label><textarea id="recommendation" placeholder="Any recommended actions or next steps..."></textarea></div>
@@ -527,7 +543,7 @@ function hexRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),pa
 function showToast(msg,dur=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function setUploadStatus(state,msg){const el=document.getElementById('upload-status');el.className=state;if(el.querySelector('#upload-msg'))el.querySelector('#upload-msg').textContent=msg||'';if(!state)el.style.display='none';}
 
-function collectForm(){return{docNum,custName:gv('cust-name'),custContact:gv('cust-contact'),custPhone:gv('cust-phone'),custEmail:gv('cust-email'),custAddr:gv('cust-addr'),chargeType:document.querySelector('input[name="charge"]:checked')?.value||'',warrantyDate:gv('warranty-date'),poNum:gv('po-num'),services:getServices(),otherSpecify:gv('other-specify'),engineers:getEngineers(),svcDate:gv('svc-date'),equipment:gv('equipment'),timeStart:gv('time-start'),timeEnd:gv('time-end'),problem:gv('problem'),workDone:gv('work-done'),recommendation:gv('recommendation'),parts:getParts(),jobStatus:document.querySelector('input[name="job-status"]:checked')?.value||'',rating:currentRating,custRemarks:gv('cust-remarks'),savedAt:new Date().toISOString()};}
+function collectForm(){return{docNum,custName:gv('cust-name'),custContact:gv('cust-contact'),custPhone:gv('cust-phone'),custEmail:gv('cust-email'),custAddr:gv('cust-addr'),chargeType:document.querySelector('input[name="charge"]:checked')?.value||'',warrantyDate:gv('warranty-date'),poNum:gv('po-num'),services:getServices(),otherSpecify:gv('other-specify'),engineers:getEngineers(),svcDate:gv('svc-date'),equipment:gv('equipment'),timeStart:gv('time-start'),timeEnd:gv('time-end'),serviceDays:getServiceDays(),problem:gv('problem'),workDone:gv('work-done'),recommendation:gv('recommendation'),parts:getParts(),jobStatus:document.querySelector('input[name="job-status"]:checked')?.value||'',rating:currentRating,custRemarks:gv('cust-remarks'),savedAt:new Date().toISOString()};}
 
 let asTimer=null;
 function setupAutosave(){}
@@ -630,7 +646,31 @@ function buildPDF(){
   const cbc={'Paid service':'#185FA5','Free of charge (F.O.C.)':'#1D9E75','Under warranty':'#BA7517'};if(cbc[chargeVal]){doc.setFillColor(...hexRGB(cbc[chargeVal]));doc.roundedRect(W-M-28,y+1,26,5,1,1,'F');doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(255,255,255);const bl=chargeVal==='Free of charge (F.O.C.)'?'F.O.C.':chargeVal==='Under warranty'?'WARRANTY':'PAID';doc.text(bl,W-M-15,y+4.5,{align:'center'});}y+=13;y+=2;
   chk(25);secT('TYPE OF SERVICE');if(services.length){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));doc.text('Services performed',M,y+3);y+=4.5;const st=services.join('  \u2022  ');const lines=doc.splitTextToSize(st,W-M*2-4);const bh=Math.max(8,lines.length*4+4);doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,bh);tf(9);doc.setTextColor(...hexRGB(dark));doc.text(lines,M+2,y+4);y+=bh+4;}else{row1('Services performed','\u2014');}y+=2;
   chk(30);secT('ENGINEERS ASSIGNED');if(!engineers.length){row1('Engineers','\u2014');}else{engineers.forEach((eng,i)=>{const hw=(W-M*2)/2-3;fBox(M,y,hw,'Engineer '+(i+1),eng.name||'\u2014');fBox(M+hw+6,y,hw,'Contact phone',eng.phone||'\u2014');y+=13;});}y+=2;
-  chk(60);secT('JOB DETAILS');row2('Date of service',fmtDate(gv('svc-date')),'Equipment / product',gv('equipment'));row2('Time started',gv('time-start')||'\u2014','Time completed',gv('time-end')||'\u2014');y+=2;tBlk('Problem / complaint reported',gv('problem'));tBlk('Work performed',gv('work-done'));tBlk('Recommendation / follow-up',gv('recommendation'));y+=2;
+  chk(60);secT('JOB DETAILS');row2('Date of service',fmtDate(gv('svc-date')),'Equipment / product',gv('equipment'));
+  // Service days table
+  const sDays = getServiceDays().filter(d=>d.date);
+  if(sDays.length){
+    chk(10+sDays.length*8);
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
+    doc.text('Service Days',M,y+3);y+=5;
+    const cols=[M, M+28, M+46, M+64, M+84];
+    const hds=['Date','Start','End','Working Hrs'];
+    doc.setFillColor(...hexRGB('#F0F4F8'));doc.rect(M,y,W-M*2,6,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...hexRGB(dark));
+    hds.forEach((h,i)=>doc.text(h,cols[i]+1,y+4));
+    y+=6;
+    sDays.forEach((d,ri)=>{
+      if(ri%2===0){doc.setFillColor(248,250,252);doc.rect(M,y,W-M*2,6,'F');}
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(dark));
+      doc.text(fmtDate(d.date)||'-',cols[0]+1,y+4);
+      doc.text(d.start||'-',cols[1]+1,y+4);
+      doc.text(d.end||'-',cols[2]+1,y+4);
+      doc.text(d.hrs||'-',cols[3]+1,y+4);
+      y+=6;
+    });
+    y+=4;
+  }
+  y+=2;tBlk('Problem / complaint reported',gv('problem'));tBlk('Work performed',gv('work-done'));tBlk('Recommendation / follow-up',gv('recommendation'));y+=2;
   if(parts.length){chk(30);secT('PARTS & MATERIALS USED');const cols=[80,30,18,34];doc.setFillColor(...hexRGB('#E6F1FB'));doc.rect(M,y,W-M*2,6,'F');let px=M;['Part / description','Part no.','Qty','Unit price'].forEach((h,i)=>{doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...hexRGB(blue));doc.text(h,px+1,y+4);px+=cols[i];});y+=6;let tot=0;parts.forEach((p,idx)=>{chk(8);if(idx%2===0){doc.setFillColor(248,250,252);doc.rect(M,y,W-M*2,6,'F');}px=M;[p.desc,p.pn,p.qty,p.price?(parseFloat(p.price)||0).toFixed(2):''].forEach((cell,i)=>{tf(8.5);doc.setTextColor(...hexRGB(dark));doc.text(String(cell),px+1,y+4,{maxWidth:cols[i]-2});px+=cols[i];});const q=parseFloat(p.qty||0),pr=parseFloat(p.price||0);if(!isNaN(q)&&!isNaN(pr))tot+=q*pr;y+=6;});doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y-parts.length*6-6,W-M*2,parts.length*6+6);doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...hexRGB(blue));doc.text('Parts total: \u0E3F'+tot.toFixed(2),W-M,y+3,{align:'right'});y+=8;}
   if(attachedPhotos.length){chk(50);secT('PHOTOS ('+attachedPhotos.length+' attached)');const iW=(W-M*2)/2-3,iH=iW*0.75;let col=0;attachedPhotos.forEach(p=>{if(col===0)chk(iH+10);const ix=col===0?M:M+iW+6;try{doc.addImage(p.dataUrl,'JPEG',ix,y,iW,iH);doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(ix,y,iW,iH);if(p.caption){doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...hexRGB(gray));doc.text(p.caption,ix,y+iH+3.5,{maxWidth:iW});}}catch(e){}col++;if(col===2){col=0;y+=iH+8;}});if(col===1)y+=iH+8;y+=2;}
   chk(30);secT('JOB STATUS & SATISFACTION');row2('Job status',statusVal,'Customer rating',currentRating?currentRating+'/5 \u2014 '+rLbs[currentRating]:'Not rated');if(gv('cust-remarks'))tBlk('Customer remarks',gv('cust-remarks'));y+=2;
@@ -715,7 +755,7 @@ async function uploadViaAppsScript(blob, filename){
 
 async function submitReport(){
   if(!gv('cust-name')){showToast('Please enter customer name');return;}
-  if(!gv('svc-date')){showToast('Please enter service date');return;}
+  if(!document.querySelector('.day-date')||!document.querySelector('.day-date').value){showToast('Please add at least one service day');return;}
   const btn=document.getElementById('submit-btn');btn.disabled=true;
   const slug=(gv('cust-name')).replace(/[^a-zA-Z0-9]/g,'-').slice(0,30);
   const ds=gv('svc-date')||new Date().toISOString().split('T')[0];
@@ -835,6 +875,47 @@ document.addEventListener('DOMContentLoaded', async function(){
 });
 
 // ══════════════════════════════════════════════════════════════
+//  Service Days
+// ══════════════════════════════════════════════════════════════
+function addServiceDay(date='', start='', end='', hrs=''){
+  const list = document.getElementById('days-list');
+  const idx = list.children.length;
+  const row = document.createElement('div');
+  row.className = 'day-row';
+  row.dataset.idx = idx;
+  row.innerHTML = `
+    <div class="day-row-inner">
+      <div class="day-field"><label>Date</label><input type="date" class="day-date" value="${date}"></div>
+      <div class="day-field"><label>Start</label><input type="time" class="day-start" value="${start}"></div>
+      <div class="day-field"><label>End</label><input type="time" class="day-end" value="${end}"></div>
+      <div class="day-field day-hrs"><label>Working hrs</label><input type="text" class="day-hrsval" placeholder="e.g. 8" value="${hrs}"></div>
+      <button type="button" class="day-del" onclick="this.closest('.day-row').remove();reindexDays()">✕</button>
+    </div>`;
+  list.appendChild(row);
+  // sync first date to hidden svc-date
+  row.querySelector('.day-date').addEventListener('change', syncFirstDate);
+  syncFirstDate();
+}
+function reindexDays(){
+  document.querySelectorAll('.day-row').forEach((r,i)=>r.dataset.idx=i);
+  syncFirstDate();
+}
+function syncFirstDate(){
+  const first = document.querySelector('.day-date');
+  if(first) document.getElementById('svc-date').value = first.value;
+}
+function getServiceDays(){
+  return Array.from(document.querySelectorAll('.day-row')).map(r=>({
+    date: r.querySelector('.day-date').value,
+    start: r.querySelector('.day-start').value,
+    end: r.querySelector('.day-end').value,
+    hrs: r.querySelector('.day-hrsval').value,
+  }));
+}
+// Init with one day row
+document.addEventListener('DOMContentLoaded', ()=>{ addServiceDay(); });
+
+// ══════════════════════════════════════════════════════════════
 //  Send PDF via Gmail API
 // ══════════════════════════════════════════════════════════════
 async function sendEmailToCustomer(pdfBlob, filename){
@@ -926,7 +1007,7 @@ async function sendEmailToCustomer(pdfBlob, filename){
 
 async function submitAndEmail(){
   if(!gv('cust-name')){ showToast('Please enter customer name'); return; }
-  if(!gv('svc-date') ){ showToast('Please enter service date');  return; }
+  if(!document.querySelector('.day-date')||!document.querySelector('.day-date').value){ showToast('Please add at least one service day'); return; }
   if(!gv('cust-email')){ showToast('Please enter customer email address first'); return; }
 
   const btn = document.getElementById('email-btn');
