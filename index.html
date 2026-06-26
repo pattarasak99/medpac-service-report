@@ -718,21 +718,25 @@ async function uploadViaAppsScript(blob, filename){
 
   for(let i = 0; i < total; i++){
     const chunk = b64.slice(i*CHUNK, (i+1)*CHUNK);
-    // Send everything via GET — small chunk size keeps URL short
+    // Send metadata in URL, chunk data in POST body
     const gasUrl = CONFIG.APPS_SCRIPT_URL
       + '?action=chunk&uid=' + uid
       + '&i=' + i + '&total=' + total
-      + '&filename=' + encodeURIComponent(filename)
-      + '&data=' + encodeURIComponent(chunk);
+      + '&filename=' + encodeURIComponent(filename);
 
     const proxyUrl = WORKER + '/?url=' + encodeURIComponent(gasUrl);
+    const body = 'data=' + encodeURIComponent(chunk);
 
     setUploadStatus('uploading', 'Uploading ' + (i+1) + '/' + total + '...');
 
     let result;
     for(let retry = 0; retry < 3; retry++){
       try {
-        const resp = await fetch(proxyUrl);
+        const resp = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body,
+        });
         const txt = await resp.text();
         result = JSON.parse(txt);
         break;
