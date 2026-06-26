@@ -165,12 +165,14 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
   /* Service day rows */
   .days-header { display: grid; grid-template-columns: 1fr 1fr 1fr 80px 64px; gap: 8px; padding: 0 4px; margin-bottom: 4px; }
   .days-header span { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .day-row { margin-bottom: 6px; }
-  .day-row-inner { display: grid; grid-template-columns: 1fr 1fr 1fr 80px 32px 32px; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
-  .day-row-inner input { width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
-  .day-add-btn { background: var(--accent); color: #fff; border: none; border-radius: 7px; padding: 5px 0; cursor: pointer; font-size: 16px; font-weight: 700; width: 32px; text-align: center; }
+  .day-row { margin-bottom: 8px; }
+  .day-row-inner { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .day-row-inner input[type=date] { flex: 2; min-width: 120px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
+  .day-row-inner input[type=time] { flex: 1; min-width: 90px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
+  .day-row-inner input[type=text] { flex: 0 0 80px; width: 80px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
+  .day-add-btn { flex: 0 0 32px; height: 34px; background: var(--accent); color: #fff; border: none; border-radius: 7px; cursor: pointer; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .day-add-btn:hover { opacity: .85; }
-  .day-del { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 5px 0; cursor: pointer; color: var(--muted); font-size: 14px; width: 32px; text-align: center; }
+  .day-del { flex: 0 0 32px; height: 34px; background: none; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; }
   .day-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
   .day-del-hidden { visibility: hidden; pointer-events: none; }
 </style>
