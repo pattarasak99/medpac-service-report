@@ -163,12 +163,9 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
 @media(max-width:400px){.charge-grid{grid-template-columns:1fr}.eng-row{grid-template-columns:1fr auto}}
 
   /* Service day rows */
-  .day-row { margin-bottom: 6px; }
-  .day-row-inner { display: grid; grid-template-columns: 160px 110px 110px 80px 34px 34px; gap: 6px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; overflow-x: auto; }
-  .day-row-inner input { padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; width: 100%; }
-  .day-add-btn { width: 34px; height: 34px; background: var(--accent); color: #fff; border: none; border-radius: 7px; cursor: pointer; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .day-add-btn:hover { opacity: .85; }
-  .day-del { width: 34px; height: 34px; background: none; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .day-row { display: grid; grid-template-columns: 1fr 1fr 1fr 90px 34px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .day-row input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--surface); color: var(--text); width: 100%; box-sizing: border-box; }
+  .day-del { width: 34px; height: 36px; background: none; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 16px; }
   .day-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
   .day-del-hidden { visibility: hidden; pointer-events: none; }
 </style>
@@ -301,14 +298,15 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
       <div style="margin-top:14px">
         <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Service Days *</div>
         <!-- Header -->
-        <div style="display:grid;grid-template-columns:160px 110px 110px 80px 34px 34px;gap:6px;padding:0 10px;margin-bottom:4px;">
-          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Date</span>
-          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Start</span>
-          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">End</span>
-          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Hrs</span>
-          <span></span><span></span>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 90px 34px;gap:8px;margin-bottom:4px;">
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Date</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Start</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">End</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Hrs</span>
+          <span></span>
         </div>
         <div id="days-list"></div>
+        <button type="button" onclick="addServiceDay()" style="margin-top:10px;padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">+ Add Day</button>
       </div>
       <div class="fg" style="margin-top:16px">
         <div class="field f1"><label>Problem / complaint reported</label><textarea id="problem" placeholder="Describe the issue reported by the customer..."></textarea></div>
@@ -892,24 +890,22 @@ function addServiceDay(date='', start='', end='', hrs=''){
   row.dataset.idx = idx;
   const isFirst = list.children.length === 0;
   row.innerHTML = `
-    <div class="day-row-inner">
       <input type="date" class="day-date" value="${date}">
       <input type="time" class="day-start" value="${start}">
       <input type="time" class="day-end" value="${end}">
       <input type="text" class="day-hrsval" placeholder="e.g. 8" value="${hrs}">
-      <button type="button" class="day-add-btn" onclick="addServiceDay()" title="Add day">+</button>
-      <button type="button" class="day-del ${isFirst?'day-del-hidden':''}" onclick="this.closest('.day-row').remove();reindexDays()" title="Remove day">✕</button>
-    </div>`;
+      <button type="button" class="day-del ${isFirst?'day-del-hidden':''}" onclick="this.closest('.day-row').remove();reindexDays()" title="Remove">✕</button>`;
   list.appendChild(row);
   // sync first date to hidden svc-date
   row.querySelector('.day-date').addEventListener('change', syncFirstDate);
   syncFirstDate();
 }
 function reindexDays(){
-  document.querySelectorAll('.day-row').forEach((r,i)=>{
+  const rows = document.querySelectorAll('.day-row');
+  rows.forEach((r,i)=>{
     r.dataset.idx=i;
     const del = r.querySelector('.day-del');
-    if(del){ del.classList.toggle('day-del-hidden', i===0 && document.querySelectorAll('.day-row').length===1); }
+    if(del){ del.classList.toggle('day-del-hidden', rows.length===1); }
   });
   syncFirstDate();
 }
