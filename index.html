@@ -163,16 +163,12 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
 @media(max-width:400px){.charge-grid{grid-template-columns:1fr}.eng-row{grid-template-columns:1fr auto}}
 
   /* Service day rows */
-  .days-header { display: grid; grid-template-columns: 1fr 1fr 1fr 80px 64px; gap: 8px; padding: 0 4px; margin-bottom: 4px; }
-  .days-header span { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .day-row { margin-bottom: 8px; }
-  .day-row-inner { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-  .day-row-inner input[type=date] { flex: 2; min-width: 120px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
-  .day-row-inner input[type=time] { flex: 1; min-width: 90px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
-  .day-row-inner input[type=text] { flex: 0 0 80px; width: 80px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; }
-  .day-add-btn { flex: 0 0 32px; height: 34px; background: var(--accent); color: #fff; border: none; border-radius: 7px; cursor: pointer; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .day-row { margin-bottom: 6px; }
+  .day-row-inner { display: grid; grid-template-columns: 160px 110px 110px 80px 34px 34px; gap: 6px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; overflow-x: auto; }
+  .day-row-inner input { padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); box-sizing: border-box; width: 100%; }
+  .day-add-btn { width: 34px; height: 34px; background: var(--accent); color: #fff; border: none; border-radius: 7px; cursor: pointer; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .day-add-btn:hover { opacity: .85; }
-  .day-del { flex: 0 0 32px; height: 34px; background: none; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .day-del { width: 34px; height: 34px; background: none; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .day-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
   .day-del-hidden { visibility: hidden; pointer-events: none; }
 </style>
@@ -305,12 +301,12 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
       <div style="margin-top:14px">
         <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Service Days *</div>
         <!-- Header -->
-        <div class="days-header">
-          <span>Date</span>
-          <span>Time started</span>
-          <span>Time completed</span>
-          <span>Working hrs</span>
-          <span></span>
+        <div style="display:grid;grid-template-columns:160px 110px 110px 80px 34px 34px;gap:6px;padding:0 10px;margin-bottom:4px;">
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Date</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Start</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">End</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Hrs</span>
+          <span></span><span></span>
         </div>
         <div id="days-list"></div>
       </div>
@@ -900,7 +896,7 @@ function addServiceDay(date='', start='', end='', hrs=''){
       <input type="date" class="day-date" value="${date}">
       <input type="time" class="day-start" value="${start}">
       <input type="time" class="day-end" value="${end}">
-      <input type="text" class="day-hrsval" placeholder="e.g. 8" value="${hrs}" style="width:70px">
+      <input type="text" class="day-hrsval" placeholder="e.g. 8" value="${hrs}">
       <button type="button" class="day-add-btn" onclick="addServiceDay()" title="Add day">+</button>
       <button type="button" class="day-del ${isFirst?'day-del-hidden':''}" onclick="this.closest('.day-row').remove();reindexDays()" title="Remove day">✕</button>
     </div>`;
