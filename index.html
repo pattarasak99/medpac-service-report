@@ -163,14 +163,11 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
 @media(max-width:400px){.charge-grid{grid-template-columns:1fr}.eng-row{grid-template-columns:1fr auto}}
 
   /* Service day rows */
-  .day-row { margin-bottom: 8px; }
-  .day-row-inner { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
-  .day-field { display: flex; flex-direction: column; gap: 4px; }
-  .day-field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .day-field input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: var(--bg); color: var(--text); }
-  .day-field.day-hrs input { width: 70px; }
-  .day-del { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px; cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 1px; }
-  .day-del:hover { background: #fee; color: #c00; border-color: #fcc; }
+  .day-row { margin-bottom: 10px; }
+  .day-row-inner { display: flex; align-items: flex-start; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 14px 14px; }
+  .day-row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
+  .day-del { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 9px; cursor: pointer; color: var(--muted); font-size: 14px; margin-top: 2px; flex-shrink: 0; }
+  .day-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
 </style>
 </head>
 <body>
@@ -653,8 +650,8 @@ function buildPDF(){
     chk(10+sDays.length*8);
     doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
     doc.text('Service Days',M,y+3);y+=5;
-    const cols=[M, M+28, M+46, M+64, M+84];
-    const hds=['Date','Start','End','Working Hrs'];
+    const cols=[M, M+30, M+48, M+66, M+82];
+    const hds=['Date','Start','End','Working Hrs','Equipment'];
     doc.setFillColor(...hexRGB('#F0F4F8'));doc.rect(M,y,W-M*2,6,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...hexRGB(dark));
     hds.forEach((h,i)=>doc.text(h,cols[i]+1,y+4));
@@ -666,6 +663,7 @@ function buildPDF(){
       doc.text(d.start||'-',cols[1]+1,y+4);
       doc.text(d.end||'-',cols[2]+1,y+4);
       doc.text(d.hrs||'-',cols[3]+1,y+4);
+      doc.text(d.equip||'-',cols[4]+1,y+4);
       y+=6;
     });
     y+=4;
@@ -877,7 +875,7 @@ document.addEventListener('DOMContentLoaded', async function(){
 // ══════════════════════════════════════════════════════════════
 //  Service Days
 // ══════════════════════════════════════════════════════════════
-function addServiceDay(date='', start='', end='', hrs=''){
+function addServiceDay(date='', start='', end='', hrs='', equip=''){
   const list = document.getElementById('days-list');
   const idx = list.children.length;
   const row = document.createElement('div');
@@ -885,11 +883,14 @@ function addServiceDay(date='', start='', end='', hrs=''){
   row.dataset.idx = idx;
   row.innerHTML = `
     <div class="day-row-inner">
-      <div class="day-field"><label>Date</label><input type="date" class="day-date" value="${date}"></div>
-      <div class="day-field"><label>Start</label><input type="time" class="day-start" value="${start}"></div>
-      <div class="day-field"><label>End</label><input type="time" class="day-end" value="${end}"></div>
-      <div class="day-field day-hrs"><label>Working hrs</label><input type="text" class="day-hrsval" placeholder="e.g. 8" value="${hrs}"></div>
-      <button type="button" class="day-del" onclick="this.closest('.day-row').remove();reindexDays()">✕</button>
+      <div class="day-row-grid">
+        <div class="field"><label>Date of service</label><input type="date" class="day-date" value="${date}"></div>
+        <div class="field"><label>Equipment / product</label><input type="text" class="day-equip" placeholder="Name, model, S/N" value="${equip||''}"></div>
+        <div class="field"><label>Time started</label><input type="time" class="day-start" value="${start}"></div>
+        <div class="field"><label>Time completed</label><input type="time" class="day-end" value="${end}"></div>
+        <div class="field"><label>Working hours</label><input type="text" class="day-hrsval" placeholder="e.g. 8" value="${hrs}"></div>
+      </div>
+      <button type="button" class="day-del" onclick="this.closest('.day-row').remove();reindexDays()" title="Remove day">✕</button>
     </div>`;
   list.appendChild(row);
   // sync first date to hidden svc-date
@@ -910,6 +911,7 @@ function getServiceDays(){
     start: r.querySelector('.day-start').value,
     end: r.querySelector('.day-end').value,
     hrs: r.querySelector('.day-hrsval').value,
+    equip: r.querySelector('.day-equip').value,
   }));
 }
 // Init with one day row
