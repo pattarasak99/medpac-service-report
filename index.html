@@ -755,16 +755,13 @@ function buildPDF(){
   y+=2;tBlk('Problem / complaint reported',gv('problem'));tBlk('Work performed',gv('work-done'));
   // Always show recommendation box
   chk(20);
-  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
-  doc.text('Recommendation / follow-up',M,y+3);y+=4.5;
   const recVal=gv('recommendation');
   if(recVal){
-    const recLines=doc.splitTextToSize(recVal,W-M*2-4);
-    const recH=Math.max(12,recLines.length*4.5+4);
-    doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,recH);
-    tf(9);doc.setTextColor(...hexRGB(dark));doc.text(recLines,M+2,y+4);y+=recH+4;
+    tBlk('Recommendation / follow-up', recVal);
   } else {
-    doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,12);y+=16;
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
+    doc.text('Recommendation / follow-up',M,y+3);y+=5;
+    doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,12);y+=17;
   }
   y+=2;
   if(parts.length){chk(30);secT('PARTS & MATERIALS USED');const cols=[80,30,18,34];doc.setFillColor(...hexRGB('#E6F1FB'));doc.rect(M,y,W-M*2,6,'F');let px=M;['Part / description','Part no.','Qty','Unit price'].forEach((h,i)=>{doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...hexRGB(blue));doc.text(h,px+1,y+4);px+=cols[i];});y+=6;let tot=0;parts.forEach((p,idx)=>{chk(8);if(idx%2===0){doc.setFillColor(248,250,252);doc.rect(M,y,W-M*2,6,'F');}px=M;[p.desc,p.pn,p.qty,p.price?(parseFloat(p.price)||0).toFixed(2):''].forEach((cell,i)=>{tf(8.5);doc.setTextColor(...hexRGB(dark));doc.text(String(cell),px+1,y+4,{maxWidth:cols[i]-2});px+=cols[i];});const q=parseFloat(p.qty||0),pr=parseFloat(p.price||0);if(!isNaN(q)&&!isNaN(pr))tot+=q*pr;y+=6;});doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y-parts.length*6-6,W-M*2,parts.length*6+6);doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...hexRGB(blue));doc.text('Parts total: \u0E3F'+tot.toFixed(2),W-M,y+3,{align:'right'});y+=8;}
