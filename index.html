@@ -701,29 +701,22 @@ function buildPDF(){
   function tBlk(label,val){
     if(!val)return;
     doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
-    doc.text(label,M,y+3);y+=4.5;
+    doc.text(label,M,y+3);y+=5;
     tf(9);doc.setTextColor(...hexRGB(dark));
-    const lines=doc.splitTextToSize(val,W-M*2-4);
-    const lineH=4.5;
-    const maxLinesPerPage=Math.floor((278-y-6)/lineH);
-    if(lines.length<=maxLinesPerPage){
-      const bh=Math.max(10,lines.length*lineH+4);
+    const lines=doc.splitTextToSize(val,W-M*2-6);
+    const lineH=5;
+    let remaining=[...lines];
+    let first=true;
+    while(remaining.length>0){
+      if(!first){doc.addPage();y=20;}
+      const avail=Math.max(2,Math.floor((275-y)/lineH));
+      const batch=remaining.splice(0,avail);
+      const bh=batch.length*lineH+6;
+      chk(bh+4);
       doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,bh);
-      doc.text(lines,M+2,y+4);y+=bh+4;
-    } else {
-      // Split across pages
-      let remaining=[...lines];
-      let first=true;
-      while(remaining.length>0){
-        if(!first){chk(20);}
-        const avail=Math.floor((278-y-6)/lineH);
-        const batch=remaining.splice(0,Math.max(1,avail));
-        const bh=Math.max(10,batch.length*lineH+4);
-        doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,bh);
-        doc.text(batch,M+2,y+4);y+=bh+4;
-        if(remaining.length>0){doc.addPage();y=20;}
-        first=false;
-      }
+      doc.text(batch,M+3,y+5);
+      y+=bh+5;
+      first=false;
     }
   }
   function chk(n=30){if(y+n>278){doc.addPage();y=20;}}
