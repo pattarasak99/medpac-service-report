@@ -700,11 +700,14 @@ function buildPDF(){
   function row1(l,v){fBox(M,y,W-M*2,l,v);y+=13;}
   function tBlk(label,val){
     if(!val)return;
-    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
-    doc.text(label,M,y+3);y+=5;
     tf(9);doc.setTextColor(...hexRGB(dark));
     const lines=doc.splitTextToSize(val,W-M*2-6);
     const lineH=5;
+    const firstBatchH=Math.min(lines.length,Math.max(2,Math.floor((275-y-10)/lineH)))*lineH+6;
+    // Check space for label + at least first batch before drawing label
+    chk(10+Math.min(firstBatchH,30));
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
+    doc.text(label,M,y+3);y+=5;
     let remaining=[...lines];
     let first=true;
     while(remaining.length>0){
@@ -712,8 +715,8 @@ function buildPDF(){
       const avail=Math.max(2,Math.floor((275-y)/lineH));
       const batch=remaining.splice(0,avail);
       const bh=batch.length*lineH+6;
-      chk(bh+4);
       doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,bh);
+      tf(9);doc.setTextColor(...hexRGB(dark));
       doc.text(batch,M+3,y+5);
       y+=bh+5;
       first=false;
