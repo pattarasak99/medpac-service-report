@@ -162,6 +162,12 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
 #cfg-warn strong{display:block;margin-bottom:4px}
 @media(max-width:400px){.charge-grid{grid-template-columns:1fr}.eng-row{grid-template-columns:1fr auto}}
 
+  /* Machine rows */
+  .machine-row { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr 34px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .machine-row input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--surface); color: var(--text); width: 100%; box-sizing: border-box; }
+  .machine-del { width: 34px; height: 36px; background: none; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 14px; }
+  .machine-del:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+  .machine-del-hidden { visibility: hidden; pointer-events: none; }
   /* Service day rows */
   .day-row { display: grid; grid-template-columns: 1fr 1fr 1fr 90px 34px; gap: 8px; align-items: center; margin-bottom: 8px; }
   .day-row input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--surface); color: var(--text); width: 100%; box-sizing: border-box; }
@@ -291,8 +297,22 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
         Job details
       </div>
       <div class="fg">
-        <div class="field f2"><label>Equipment / product</label><input type="text" id="equipment" placeholder="Name, model, S/N"></div>
         <div class="field f2" style="display:none"><input type="date" id="svc-date"></div>
+        <div class="field f2" style="display:none"><input type="text" id="equipment"></div>
+      </div>
+      <!-- Machines section -->
+      <div style="margin-top:4px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Equipment / Machines *</div>
+        <div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr auto;gap:6px;padding:0 2px;margin-bottom:4px;">
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Name</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Model</span>
+          <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;">Serial No.</span>
+          <span></span>
+        </div>
+        <div id="machines-list"></div>
+        <div onclick="addMachine()" style="display:inline-block;margin-top:8px;padding:7px 16px;background:#185FA5;color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;user-select:none;-webkit-user-select:none;">+ Add Machine</div>
+      </div>
+      <div class="fg" style="margin-top:14px">
       </div>
       <!-- Service Days -->
       <div style="margin-top:14px">
@@ -605,7 +625,7 @@ function hexRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),pa
 function showToast(msg,dur=3000){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function setUploadStatus(state,msg){const el=document.getElementById('upload-status');el.className=state;if(el.querySelector('#upload-msg'))el.querySelector('#upload-msg').textContent=msg||'';if(!state)el.style.display='none';}
 
-function collectForm(){return{docNum,custName:gv('cust-name'),custContact:gv('cust-contact'),custPhone:gv('cust-phone'),custEmail:gv('cust-email'),custAddr:gv('cust-addr'),chargeType:document.querySelector('input[name="charge"]:checked')?.value||'',warrantyDate:gv('warranty-date'),poNum:gv('po-num'),services:getServices(),otherSpecify:gv('other-specify'),engineers:getEngineers(),svcDate:gv('svc-date'),equipment:gv('equipment'),timeStart:gv('time-start'),timeEnd:gv('time-end'),serviceDays:getServiceDays(),problem:gv('problem'),workDone:gv('work-done'),recommendation:gv('recommendation'),parts:getParts(),jobStatus:document.querySelector('input[name="job-status"]:checked')?.value||'',rating:currentRating,custRemarks:gv('cust-remarks'),savedAt:new Date().toISOString()};}
+function collectForm(){return{docNum,custName:gv('cust-name'),custContact:gv('cust-contact'),custPhone:gv('cust-phone'),custEmail:gv('cust-email'),custAddr:gv('cust-addr'),chargeType:document.querySelector('input[name="charge"]:checked')?.value||'',warrantyDate:gv('warranty-date'),poNum:gv('po-num'),services:getServices(),otherSpecify:gv('other-specify'),engineers:getEngineers(),svcDate:gv('svc-date'),equipment:gv('equipment'),machines:getMachines(),timeStart:gv('time-start'),timeEnd:gv('time-end'),serviceDays:getServiceDays(),problem:gv('problem'),workDone:gv('work-done'),recommendation:gv('recommendation'),parts:getParts(),jobStatus:document.querySelector('input[name="job-status"]:checked')?.value||'',rating:currentRating,custRemarks:gv('cust-remarks'),savedAt:new Date().toISOString()};}
 
 let asTimer=null;
 function setupAutosave(){}
@@ -731,7 +751,30 @@ function buildPDF(){
   const cbc={'Paid service':'#185FA5','Free of charge (F.O.C.)':'#1D9E75','Under warranty':'#BA7517'};if(cbc[chargeVal]){doc.setFillColor(...hexRGB(cbc[chargeVal]));doc.roundedRect(W-M-28,y+1,26,5,1,1,'F');doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(255,255,255);const bl=chargeVal==='Free of charge (F.O.C.)'?'F.O.C.':chargeVal==='Under warranty'?'WARRANTY':'PAID';doc.text(bl,W-M-15,y+4.5,{align:'center'});}y+=13;y+=2;
   chk(25);secT('TYPE OF SERVICE');if(services.length){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));doc.text('Services performed',M,y+3);y+=4.5;const st=services.join('  \u2022  ');const lines=doc.splitTextToSize(st,W-M*2-4);const bh=Math.max(8,lines.length*4+4);doc.setDrawColor(...hexRGB(lg));doc.setLineWidth(.3);doc.rect(M,y,W-M*2,bh);tf(9);doc.setTextColor(...hexRGB(dark));doc.text(lines,M+2,y+4);y+=bh+4;}else{row1('Services performed','\u2014');}y+=2;
   chk(30);secT('ENGINEERS ASSIGNED');if(!engineers.length){row1('Engineers','\u2014');}else{engineers.forEach((eng,i)=>{const hw=(W-M*2)/2-3;fBox(M,y,hw,'Engineer '+(i+1),eng.name||'\u2014');fBox(M+hw+6,y,hw,'Contact phone',eng.phone||'\u2014');y+=13;});}y+=2;
-  chk(60);secT('JOB DETAILS');row2('Date of service',fmtDate(gv('svc-date')),'Equipment / product',gv('equipment'));
+  chk(60);secT('JOB DETAILS');
+  // Date of service row
+  fBox(M,y,W-M*2,'Date of service',fmtDate(gv('svc-date')));y+=13;
+  // Machines table
+  const machines=getMachines();
+  if(machines.length){
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...hexRGB(gray));
+    doc.text('Equipment / Machines',M,y+3);y+=5;
+    const mcols=[M, M+65, M+110];
+    const mhds=['Name','Model','Serial No.'];
+    doc.setFillColor(...hexRGB('#F0F4F8'));doc.rect(M,y,W-M*2,6,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...hexRGB(dark));
+    mhds.forEach((h,i)=>doc.text(h,mcols[i]+1,y+4));
+    y+=6;
+    machines.forEach((m,ri)=>{
+      if(ri%2===0){doc.setFillColor(248,250,252);doc.rect(M,y,W-M*2,6,'F');}
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...hexRGB(dark));
+      doc.text(m.name||'-',mcols[0]+1,y+4,{maxWidth:62});
+      doc.text(m.model||'-',mcols[1]+1,y+4,{maxWidth:42});
+      doc.text(m.sn||'-',mcols[2]+1,y+4,{maxWidth:42});
+      y+=6;
+    });
+    y+=4;
+  }
   // Service days table
   const sDays = getServiceDays().filter(d=>d.date);
   if(sDays.length){
@@ -889,7 +932,7 @@ async function submitReport(){
 }
 function clearLocalDraft(){}
 
-function confirmReset(){if(!confirm('Reset all fields and photos?'))return;document.querySelectorAll('input:not([type=radio]):not([type=checkbox]),select,textarea').forEach(el=>{el.type==='date'?el.value=new Date().toISOString().split('T')[0]:el.value='';});document.querySelectorAll('.charge-card').forEach(c=>c.classList.remove('sel-paid','sel-foc','sel-warranty'));document.querySelectorAll('input[name="charge"]').forEach(r=>r.checked=false);document.querySelectorAll('#svc-chips input[type=checkbox]').forEach(c=>c.checked=false);document.querySelectorAll('#svc-chips .chip').forEach(c=>c.classList.remove('active'));document.getElementById('other-specify-wrap').style.display='none';document.getElementById('warranty-expiry-wrap').style.display='none';clearSig('tech-sig','tech');clearSig('cust-sig','cust');currentRating=0;document.querySelectorAll('.star-btn').forEach(b=>b.classList.remove('on'));document.getElementById('rating-txt').textContent='';document.querySelector('.status-card').click();document.getElementById('eng-list').innerHTML='';addEngineer();attachedPhotos=[];document.getElementById('photo-grid').innerHTML='';document.getElementById('parts-body').innerHTML='<tr><td><input type="text" placeholder="Part name"></td><td><input type="text" placeholder="P/N"></td><td><input type="number" min="0" placeholder="1" class="qty-i"></td><td><input type="number" min="0" step="0.01" placeholder="0.00" class="price-i"></td><td><button class="del-row-btn" onclick="delPartRow(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td></tr>';attachParts();calcTotal();docNum=genDocNum();document.getElementById('top-doc-num').textContent=docNum;setUploadStatus('');showToast('Form reset');}
+function confirmReset(){if(!confirm('Reset all fields and photos?'))return;document.querySelectorAll('input:not([type=radio]):not([type=checkbox]),select,textarea').forEach(el=>{el.type==='date'?el.value=new Date().toISOString().split('T')[0]:el.value='';});document.querySelectorAll('.charge-card').forEach(c=>c.classList.remove('sel-paid','sel-foc','sel-warranty'));document.querySelectorAll('input[name="charge"]').forEach(r=>r.checked=false);document.querySelectorAll('#svc-chips input[type=checkbox]').forEach(c=>c.checked=false);document.querySelectorAll('#svc-chips .chip').forEach(c=>c.classList.remove('active'));document.getElementById('other-specify-wrap').style.display='none';document.getElementById('warranty-expiry-wrap').style.display='none';clearSig('tech-sig','tech');clearSig('cust-sig','cust');currentRating=0;document.querySelectorAll('.star-btn').forEach(b=>b.classList.remove('on'));document.getElementById('rating-txt').textContent='';document.querySelector('.status-card').click();document.getElementById('eng-list').innerHTML='';addEngineer();document.getElementById('machines-list').innerHTML='';addMachine();attachedPhotos=[];document.getElementById('photo-grid').innerHTML='';document.getElementById('parts-body').innerHTML='<tr><td><input type="text" placeholder="Part name"></td><td><input type="text" placeholder="P/N"></td><td><input type="number" min="0" placeholder="1" class="qty-i"></td><td><input type="number" min="0" step="0.01" placeholder="0.00" class="price-i"></td><td><button class="del-row-btn" onclick="delPartRow(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td></tr>';attachParts();calcTotal();docNum=genDocNum();document.getElementById('top-doc-num').textContent=docNum;setUploadStatus('');showToast('Form reset');}
 
 document.addEventListener('DOMContentLoaded', async function(){
   checkCfg();
@@ -975,6 +1018,46 @@ document.addEventListener('DOMContentLoaded', async function(){
 });
 
 // ══════════════════════════════════════════════════════════════
+//  Machines
+// ══════════════════════════════════════════════════════════════
+function addMachine(name='', model='', sn=''){
+  const list = document.getElementById('machines-list');
+  const row = document.createElement('div');
+  row.className = 'machine-row';
+  const isFirst = list.children.length === 0;
+  row.innerHTML = `
+    <input type="text" class="mach-name" placeholder="Machine name" value="${name}">
+    <input type="text" class="mach-model" placeholder="Model" value="${model}">
+    <input type="text" class="mach-sn" placeholder="S/N" value="${sn}">
+    <button type="button" class="machine-del ${isFirst?'machine-del-hidden':''}" onclick="this.closest('.machine-row').remove();reindexMachines()" title="Remove">✕</button>`;
+  list.appendChild(row);
+  // sync first machine to hidden equipment field
+  row.querySelector('.mach-name').addEventListener('input', syncEquipment);
+  syncEquipment();
+}
+function reindexMachines(){
+  const rows = document.querySelectorAll('.machine-row');
+  rows.forEach((r,i)=>{
+    const del = r.querySelector('.machine-del');
+    if(del){ del.classList.toggle('machine-del-hidden', rows.length===1 && i===0); }
+  });
+  syncEquipment();
+}
+function syncEquipment(){
+  const first = document.querySelector('.mach-name');
+  if(first) document.getElementById('equipment').value = first.value;
+}
+function getMachines(){
+  return Array.from(document.querySelectorAll('.machine-row')).map(r=>({
+    name: r.querySelector('.mach-name').value.trim(),
+    model: r.querySelector('.mach-model').value.trim(),
+    sn: r.querySelector('.mach-sn').value.trim(),
+  })).filter(m=>m.name||m.model||m.sn);
+}
+// Init with one machine row
+document.addEventListener('DOMContentLoaded', ()=>{ addMachine(); });
+
+// ══════════════════════════════════════════════════════════════
 //  Service Days
 // ══════════════════════════════════════════════════════════════
 function addServiceDay(date='', start='', end='', hrs=''){
@@ -1028,7 +1111,7 @@ async function sendEmailToCustomer(pdfBlob, filename){
 
   const custName    = gv('cust-name')    || 'Customer';
   const svcDate     = gv('svc-date')     ? fmtDate(gv('svc-date')) : new Date().toLocaleDateString('en-GB');
-  const equipment   = gv('equipment')    || '';
+  const equipment = getMachines().map(m=>m.name+(m.model?' '+m.model:'')+(m.sn?' ('+m.sn+')':'')).join(', ') || gv('equipment') || '';
   const engineerName= getEngineers()[0]?.name || (currentUser?.name || 'MEDPAC Engineer');
   const jobStatus   = document.querySelector('input[name="job-status"]:checked')?.value || '';
 
