@@ -62,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 #upload-status.error{background:#FCEBEB;color:#A32D2D;display:flex}
 .spinner{width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
-.form-body{padding:12px 12px 100px;max-width:680px;margin:0 auto}
+.form-body{padding:12px 12px 200px;max-width:680px;margin:0 auto}
 .card{background:var(--white);border-radius:var(--r);border:0.5px solid var(--border);padding:16px;margin-bottom:12px;box-shadow:var(--sh)}
 .sec-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;padding-bottom:8px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:6px}
 .sec-title svg{width:15px;height:15px;flex-shrink:0}
@@ -143,9 +143,12 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
 /* Sig */
 .sig-wrap{border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;touch-action:none}
 .sig-canvas-el{display:block;width:100%;height:130px;background:#FAFAFA;cursor:crosshair;touch-action:none}
-.sig-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid var(--border);background:var(--white)}
-.sig-footer span{font-size:12px;color:var(--muted)}
-.sig-clear{background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px}
+.sig-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--white)}
+.sig-header span{font-size:12px;color:var(--muted)}
+.sig-footer{display:flex;align-items:center;justify-content:center;padding:6px 12px;border-top:1px solid var(--border);background:#FAFAFA}
+.sig-footer span{font-size:11px;color:var(--muted);font-style:italic}
+.sig-clear{background:#FEE2E2;border:1px solid #FCA5A5;border-radius:6px;font-size:12px;color:#DC2626;cursor:pointer;display:flex;align-items:center;gap:5px;padding:5px 12px;font-weight:600}
+.sig-clear:active{background:#FECACA}
 .sig-clear svg{width:13px;height:13px}
 /* Bottom */
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--white);border-top:1px solid var(--border);padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;max-width:680px;margin:0 auto}
@@ -429,10 +432,13 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         Lead engineer signature
       </div>
-      <div class="sig-wrap"><canvas id="tech-sig" class="sig-canvas-el"></canvas>
-        <div class="sig-footer"><span>Draw signature above</span>
+      <div class="sig-wrap">
+        <div class="sig-header">
+          <span>Draw signature below</span>
           <button class="sig-clear" onclick="clearSig('tech-sig','tech')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Clear</button>
         </div>
+        <canvas id="tech-sig" class="sig-canvas-el"></canvas>
+        <div class="sig-footer"><span>Sign in the area above</span></div>
       </div>
     </div>
 
@@ -442,12 +448,23 @@ table.pt input:focus{outline:none;border-color:var(--blue)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         Customer signature
       </div>
-      <div class="sig-wrap"><canvas id="cust-sig" class="sig-canvas-el"></canvas>
-        <div class="sig-footer"><span>Customer confirms work accepted</span>
+      <div class="sig-wrap">
+        <div class="sig-header">
+          <span>Customer confirms work accepted</span>
           <button class="sig-clear" onclick="clearSig('cust-sig','cust')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Clear</button>
         </div>
+        <canvas id="cust-sig" class="sig-canvas-el"></canvas>
+        <div class="sig-footer"><span>Sign in the area above</span></div>
       </div>
     </div>
+  </div>
+
+  <!-- Standalone clear customer signature button -->
+  <div style="max-width:680px;margin:0 auto;padding:0 12px 12px">
+    <button onclick="clearSig('cust-sig','cust')" style="width:100%;padding:12px;background:#FEE2E2;border:1.5px solid #FCA5A5;border-radius:10px;color:#DC2626;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Clear Customer Signature
+    </button>
   </div>
 
   <div class="bottom-bar" style="flex-direction:column;gap:8px;padding-bottom:calc(12px + env(safe-area-inset-bottom))">
@@ -614,7 +631,18 @@ function removePhoto(i){attachedPhotos.splice(i,1);renderPhotos();}
 function selectStatus(card){document.querySelectorAll('.status-card').forEach(c=>c.classList.remove('sel'));card.classList.add('sel');card.querySelector('input[type=radio]').checked=true;}
 function setRating(v){currentRating=v;const lbs=['','Poor','Fair','Good','Very good','Excellent'];document.getElementById('rating-txt').textContent=lbs[v]?v+'/5 \u2014 '+lbs[v]:'';document.querySelectorAll('.star-btn').forEach((b,i)=>b.classList.toggle('on',i<v));}
 
-function initCanvases(){setTimeout(()=>{initSig('tech-sig','tech');initSig('cust-sig','cust');},300);}
+function initCanvases(){setTimeout(()=>{initSig('tech-sig','tech');initSig('cust-sig','cust');
+  // Auto-scroll signature into view when tapped so Clear button is visible
+  ['tech-sig','cust-sig'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      el.addEventListener('touchstart', ()=>{
+        const header = el.closest('.sig-wrap').querySelector('.sig-header');
+        if(header) header.scrollIntoView({behavior:'smooth', block:'start'});
+      }, {once:false, passive:true});
+    }
+  });
+},300);}
 function initSig(id,key){const cv=document.getElementById(id);if(!cv)return;const ctx=cv.getContext('2d');const DPR=window.devicePixelRatio||1;const W=cv.offsetWidth||320;const H=cv.offsetHeight||130;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';ctx.scale(DPR,DPR);ctx.strokeStyle='#1a1a2e';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';let drawing=false,lx=0,ly=0;function pos(e){const r=cv.getBoundingClientRect();const sx=W/r.width,sy=H/r.height;return e.touches?{x:(e.touches[0].clientX-r.left)*sx,y:(e.touches[0].clientY-r.top)*sy}:{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};}function start(e){e.preventDefault();drawing=true;const p=pos(e);lx=p.x;ly=p.y;}function move(e){if(!drawing)return;e.preventDefault();const p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;const data=cv.toDataURL('image/png');if(key==='cust')custSigData=data;else techSigData=data;}function stop(){drawing=false;}cv.addEventListener('mousedown',start);cv.addEventListener('mousemove',move);cv.addEventListener('mouseup',stop);cv.addEventListener('mouseleave',stop);cv.addEventListener('touchstart',start,{passive:false});cv.addEventListener('touchmove',move,{passive:false});cv.addEventListener('touchend',stop);}
 function clearSig(id,key){const cv=document.getElementById(id);cv.getContext('2d').clearRect(0,0,cv.width,cv.height);if(key==='cust')custSigData=null;else techSigData=null;}
 
