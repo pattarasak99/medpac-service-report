@@ -1019,30 +1019,13 @@ document.addEventListener('DOMContentLoaded', async function(){
     return;
   }
 
-  // External browser — get LINE profile and show form
-  try {
-    if(!liff.isLoggedIn()){ liff.login(); return; }
-    var profile = await liff.getProfile();
-    var lineUser = {
-      name: profile.displayName,
-      picture: profile.pictureUrl,
-      given_name: profile.displayName,
-      family_name: '',
-      _fromLine: true
-    };
-    currentUser = lineUser;
-    renderUserBadge(lineUser);
-    showApp();
-    setTimeout(function(){
-      var inp = document.querySelector('#eng-list .eng-name');
-      if(inp && !inp.value) inp.value = profile.displayName;
-    }, 400);
-  } catch(e2){
-    console.warn('Profile error:', e2);
-    currentUser = { name: 'Engineer', given_name: 'Engineer', _fromLine: true };
-    renderUserBadge(currentUser);
-    showApp();
-  }
+  // Opened in a regular browser (even via a LIFF link) — just show the normal Google Sign-In screen.
+  // NOTE: we intentionally do NOT call liff.login() here. liff.login() redirects through LINE's
+  // OAuth flow, which always lands back on THIS LIFF app's currently-registered Endpoint URL —
+  // and that now points to MEDPAC Application (the Field Service app), not this Service Report
+  // page. Calling liff.login() here caused an infinite bounce back to MEDPAC Application. If you
+  // want LINE-profile auto-fill on this page again in future, register a separate LIFF app
+  // (its own LIFF ID) whose Endpoint URL points back to this Service Report page specifically.
 });
 
 // ══════════════════════════════════════════════════════════════
